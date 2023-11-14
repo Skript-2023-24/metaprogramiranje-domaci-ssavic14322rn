@@ -7,8 +7,9 @@ require "google_drive"
 session = GoogleDrive::Session.from_config("config.json")
 
 # uzimam sve fajlove koji se nalaze unutar google drive-a
-session.files.each do |file|
-  p file.title
-end
+# session.files.each do |file|
+#   p file.title
+# end
 
-puts "probaaaa"
+ws = session.spreadsheet_by_key("1ZwnNhN4Uj96DklpoDbJylT8tNVakcjoJK3m9cghfoqQ").worksheets[0]
+p ws[2, 1]
