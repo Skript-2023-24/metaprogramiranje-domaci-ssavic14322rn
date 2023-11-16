@@ -3,6 +3,12 @@ require "google_drive"
 session = GoogleDrive::Session.from_config("config.json")
 ws = session.spreadsheet_by_key("1ZwnNhN4Uj96DklpoDbJylT8tNVakcjoJK3m9cghfoqQ").worksheets[0]
 
+class Column
+
+    
+
+end
+
 class MyTable 
 
     include Enumerable
@@ -17,6 +23,7 @@ class MyTable
         find_start
         header
         init_table
+        col_method
     end
 
     private def init_table 
@@ -51,38 +58,43 @@ class MyTable
           end
     end
 
-    private def get_col(col_name)
+    private def col(col_name)
         col_idx = @headers.index(col_name)
         return unless col_idx
         @table.transpose[col_idx]
     end
 
     def [](col_name)
-        get_col(col_name)
+        col(col_name)
     end
 
-    def []=(col_name, idx, data)
+    def []=(idx, data, col_name)
         # puts "idx: #{idx}"
         col_idx = @headers.index(col_name)
         return unless col_idx
+        # puts "data: #{data}"
         @table[idx][col_idx] = data
+        @worksheet[idx + @row_start, col_idx + @col_start] = data
+        # puts "Updated @worksheet[#{worksheet_row}, #{worksheet_col}] with value #{data}"
+        @worksheet.save
+        
     end
 
-    def create_col_meth(col_name, meth_name, &block)
-        col_name.class_eval do
-            define_method(meth_name, &block)
-        end
-        # self.class.send(:define_method, meth_name, &block)
+    private def create_col_meth(col_name, meth_name, &block)
+        # col_name.instance_eval{
+        #     define_method(meth_name, &block)
+        # }
+        self.class.send(:define_method, meth_name, &block)
     end
 
-    def col_method
+    private def col_method
         @headers.each do |col_name|
             col_name.downcase!
             method_name = col_name.split.map(&:capitalize).join
             method_name[0] = method_name[0].downcase!
-            puts method_name
+            # puts method_name
             create_col_meth(col_name, method_name) do
-                get_col(col_name)
+                col(col_name)
             end
         end
     end
@@ -102,10 +114,12 @@ class MyTable
 end
 
 t = MyTable.new(ws)
-# puts t["prva"]
-# t["prva"][2]= 99
-# t.[]=("prva", 2, 99)
+puts t["prva kolona"][2]
+t["prva kolona"][2]= 99
+# t.[]=("prva kolona", 2, 99)
 # puts t["prva"][2]
 # puts t.row(3)
-puts t.methods
+# puts t.methods
+puts t["prva kolona"]
+# puts t.prvaKolona
 
