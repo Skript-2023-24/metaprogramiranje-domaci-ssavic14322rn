@@ -1,15 +1,111 @@
 require "google_drive"
 
-# Creates a session. This will prompt the credential via command line for the
-# first time and save it to config.json file for later usages.
-# See this document to learn how to create config.json:
-# https://github.com/gimite/google-drive-ruby/blob/master/doc/authorization.md
 session = GoogleDrive::Session.from_config("config.json")
-
-# uzimam sve fajlove koji se nalaze unutar google drive-a
-# session.files.each do |file|
-#   p file.title
-# end
-
 ws = session.spreadsheet_by_key("1ZwnNhN4Uj96DklpoDbJylT8tNVakcjoJK3m9cghfoqQ").worksheets[0]
-p ws[2, 1]
+
+class MyTable 
+
+    include Enumerable
+    attr_accessor :table, :worksheet, :row_start, :col_start, :headers
+
+    def initialize(worksheet)
+        @worksheet = worksheet
+        @row_start = nil
+        @col_start = nil
+        @headers = []
+        @table = []
+        find_start
+        header
+        init_table
+    end
+
+    private def init_table 
+
+        (@row_start..@worksheet.num_rows).each do |row|
+            tmp_row = []
+            (@col_start..@worksheet.num_cols).each do |col|
+                if @worksheet[row, col] == 'subtotal' || @worksheet[row, col] == 'total'
+                    tmp_row.clear
+                    break
+                end
+                tmp_row << worksheet[row, col]
+            end
+            @table << tmp_row unless tmp_row.empty?
+        end
+    end
+
+    private def header
+        (@col_start..@worksheet.num_cols).each do |col|
+            @headers << @worksheet[@row_start, col]
+        end
+    end
+
+    private def find_start
+        (1..@worksheet.num_rows).each do |row|
+            (1..@worksheet.num_cols).each do |col|
+              if @row_start.nil? && @worksheet[row, col] != ''
+                @row_start = row
+                @col_start = col
+              end
+            end
+          end
+    end
+
+    private def get_col(col_name)
+        col_idx = @headers.index(col_name)
+        return unless col_idx
+        @table.transpose[col_idx]
+    end
+
+    def [](col_name)
+        get_col(col_name)
+    end
+
+    def []=(col_name, idx, data)
+        # puts "idx: #{idx}"
+        col_idx = @headers.index(col_name)
+        return unless col_idx
+        @table[idx][col_idx] = data
+    end
+
+    def create_col_meth(col_name, meth_name, &block)
+        col_name.class_eval do
+            define_method(meth_name, &block)
+        end
+        # self.class.send(:define_method, meth_name, &block)
+    end
+
+    def col_method
+        @headers.each do |col_name|
+            col_name.downcase!
+            method_name = col_name.split.map(&:capitalize).join
+            method_name[0] = method_name[0].downcase!
+            puts method_name
+            create_col_meth(col_name, method_name) do
+                get_col(col_name)
+            end
+        end
+    end
+
+
+    def row(index)
+        @table[index]
+    end
+
+    def each
+        (1..@worksheet.num_rows).each do |row|
+            (1..@worksheet.num_cols).each do |col|
+              yield @worksheet[row, col] 
+            end
+        end
+    end
+end
+
+t = MyTable.new(ws)
+# puts t["prva"]
+# t["prva"][2]= 99
+# t.[]=("prva", 2, 99)
+# puts t["prva"][2]
+# puts t.row(3)
+puts t.methods
+
